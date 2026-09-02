@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 13% 5%;      /* #0A0B0D */
+    --foreground: 220 9% 94%;      /* #EDEEF0 */
+    --card: 220 13% 8%;            /* #131519 */
+    --card-foreground: 220 9% 94%;
+    --border: 220 10% 14%;         /* #1C1F26 */
+    --input: 220 10% 14%;
+    --muted: 220 10% 14%;
+    --muted-foreground: 220 6% 58%; /* #8B909A */
+    --accent: 227 100% 65%;        /* #4F7CFF */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 4 78% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --radius: 0.625rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "tnum";
+  }
+}
+
+@layer components {
+  .surface {
+    @apply bg-card border border-border rounded-[var(--radius)];
+  }
+
+  .surface-hover {
+    @apply surface transition-colors duration-150 hover:border-[hsl(220,10%,22%)];
+  }
+
+  .btn-primary {
+    @apply bg-[hsl(var(--accent))] hover:bg-[hsl(227,100%,70%)] text-white font-medium
+           px-4 py-2.5 rounded-[var(--radius)] transition-colors duration-150
+           focus:outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] focus:ring-offset-2 focus:ring-offset-background;
+  }
+
+  .btn-secondary {
+    @apply bg-transparent border border-border hover:border-[hsl(220,10%,22%)] hover:bg-white/[0.02]
+           text-foreground font-medium px-4 py-2.5 rounded-[var(--radius)] transition-colors duration-150;
+  }
+
+  .input-field {
+    @apply w-full rounded-[var(--radius)] border border-border bg-background px-3.5 py-2.5 text-sm
+           text-foreground placeholder:text-muted-foreground
+           focus:outline-none focus:ring-1 focus:ring-[hsl(var(--accent))] focus:border-[hsl(var(--accent))]
+           transition-colors duration-150;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border;
+  }
+  .badge-success { @apply badge border-emerald-800 bg-emerald-950/50 text-emerald-400; }
+  .badge-warning { @apply badge border-amber-800 bg-amber-950/50 text-amber-400; }
+  .badge-danger  { @apply badge border-red-800 bg-red-950/50 text-red-400; }
+  .badge-neutral { @apply badge border-border bg-white/[0.03] text-muted-foreground; }
+
+  .stat-value {
+    @apply text-2xl font-semibold tabular-nums text-foreground;
+  }
+}
+
+@layer utilities {
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(220 10% 20%);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(220 10% 28%); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

@@ -1,0 +1,40 @@
+﻿# Dependencies - DON'T COMMIT THESE!
+node_modules/
+.pnp/
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+dist/
+
+# Environment files (contain secrets!)
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+
+# Database files
+*.db
+*.db-journal
+prisma/*.db
+prisma/*.db-journal
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

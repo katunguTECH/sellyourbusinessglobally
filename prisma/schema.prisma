@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String?
+  image         String?
+  credits       Int       @default(50)
+  role          String    @default("user")
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  campaigns     Campaign[]
+  leads         Lead[]
+  searches      Search[]
+  creditTransactions CreditTransaction[]
+  accounts      Account[]
+  sessions      Session[]
+  socialMentions SocialMention[]
+  whatsappMessages WhatsAppMessage[]
+  keywordAlerts KeywordAlert[]
+  whatsappTemplates WhatsAppTemplate[]  // ADD THIS LINE
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Campaign {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status        String    @default("draft")
+  subject       String?
+  content       String?
+  senderName    String?
+  senderEmail   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  scheduledAt   DateTime?
+  sentCount     Int       @default(0)
+  openCount     Int       @default(0)
+  clickCount    Int       @default(0)
+  replyCount    Int       @default(0)
+  bounceCount   Int       @default(0)
+  
+  campaignLeads CampaignLead[]
+  sequences     Sequence[]
+}
+
+model CampaignLead {
+  id            String    @id @default(cuid())
+  campaignId    String
+  leadId        String
+  status        String    @default("pending")
+  sentAt        DateTime?
+  openedAt      DateTime?
+  clickedAt     DateTime?
+  repliedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  campaign      Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  @@unique([campaignId, leadId])
+}
+
+model Sequence {
+  id            String    @id @default(cuid())
+  campaignId    String
+  name          String
+  order         Int
+  subject       String?
+  content       String?
+  delayDays     Int       @default(1)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  campaign      Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model Lead {
+  id            String    @id @default(cuid())
+  firstName     String?
+  lastName      String?
+  fullName      String?
+  email         String?
+  phone         String?
+  whatsapp      String?
+  company       String?
+  title         String?
+  industry      String?
+  location      String?
+  website       String?
+  linkedin      String?
+  twitter       String?
+  instagram     String?
+  source        String    @default("manual")
+  score         Int?
+  status        String    @default("new")
+  notes         String?
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  campaignLeads CampaignLead[]
+  socialMentions SocialMention[]
+  whatsappMessages WhatsAppMessage[]
+}
+
+model Search {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  query     String
+  filters   String
+  results   Int       @default(0)
+  createdAt DateTime  @default(now())
+}
+
+model CreditTransaction {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Int
+  type        String
+  description String?
+  createdAt   DateTime  @default(now())
+}
+
+// ============================================================
+// SOCIAL LISTENING / WARM LEADS
+// ============================================================
+
+model SocialMention {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leadId        String?
+  lead          Lead?     @relation(fields: [leadId], references: [id])
+  
+  platform      String
+  author        String
+  authorHandle  String?
+  authorImage   String?
+  content       String
+  contentUrl    String?
+  postedAt      DateTime
+  detectedAt    DateTime  @default(now())
+  
+  sentiment     String?
+  intent        String?
+  keywords      String?
+  isProcessed   Boolean   @default(false)
+  isLead        Boolean   @default(false)
+  
+  status        String    @default("new")
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ============================================================
+// WHATSAPP OUTREACH
+// ============================================================
+
+model WhatsAppMessage {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leadId        String?
+  lead          Lead?     @relation(fields: [leadId], references: [id])
+  
+  messageId     String?
+  phoneNumber   String
+  content       String
+  direction     String
+  status        String    @default("sent")
+  
+  sentAt        DateTime  @default(now())
+  deliveredAt   DateTime?
+  readAt        DateTime?
+  repliedAt     DateTime?
+  
+  templateName  String?
+  templateVariables String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ============================================================
+// KEYWORD MONITORING
+// ============================================================
+
+model KeywordAlert {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  keyword       String
+  platforms     String
+  isActive      Boolean   @default(true)
+  
+  lastChecked   DateTime?
+  matchesFound  Int       @default(0)
+  lastMatch     DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ============================================================
+// WHATSAPP TEMPLATES
+// ============================================================
+
+model WhatsAppTemplate {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name          String
+  language      String    @default("en")
+  category      String    @default("utility")
+  content       String
+  variables     String?
+  
+  isActive      Boolean   @default(true)
+  usageCount    Int       @default(0)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
