@@ -1,16 +1,35 @@
-﻿import Link from 'next/link'
-import { ArrowLeft, Search, Globe, Building2, MapPin, Briefcase, Mail, Phone, Linkedin, Download, Loader2 } from 'lucide-react'
-
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
+import { 
+  Search, Globe, Building2, MapPin, Briefcase, 
+  Mail, Phone, Linkedin, Loader2, ArrowLeft,
+  Sparkles, CheckCircle, XCircle
+} from 'lucide-react'
+
+interface Lead {
+  id: string
+  fullName: string
+  company: string
+  title: string
+  industry: string
+  location: string
+  email?: string
+  phone?: string
+  linkedin?: string
+  score: number
+  source: string
+  isVerified: boolean
+}
 
 export default function ApolloLeadsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [location, setLocation] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [leads, setLeads] = useState<any[]>([])
+  const [leads, setLeads] = useState<Lead[]>([])
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
 
   const searchLeads = async () => {
     if (!searchQuery.trim()) {
@@ -20,6 +39,7 @@ export default function ApolloLeadsPage() {
 
     setIsLoading(true)
     setError('')
+    setMessage('')
     setLeads([])
 
     try {
@@ -29,7 +49,9 @@ export default function ApolloLeadsPage() {
         limit: '20'
       })
 
-      const response = await fetch(/api/leads/apollo-search?)
+      // ✅ FIXED: Proper string with template literal
+      const response = await fetch(`/api/leads/apollo-search?${params}`)
+      
       const data = await response.json()
 
       if (!response.ok) {
@@ -37,6 +59,7 @@ export default function ApolloLeadsPage() {
       }
 
       setLeads(data.leads || [])
+      setMessage(data.message || '')
       
       if (data.leads?.length === 0) {
         setError('No leads found. Try a different search term.')
@@ -52,96 +75,170 @@ export default function ApolloLeadsPage() {
     if (e.key === 'Enter') searchLeads()
   }
 
-  return (
-    <div className="min-h-screen bg-black text-white p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/" className="text-gray-400 hover:text-white transition-colors">
-            <ArrowLeft className="w-6 h-6" />
-          </Link>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Apollo Lead Search</h1>
-            <p className="text-gray-400 text-sm">Powered by Apollo.io - 275M+ decision makers</p>
-          </div>
-        </div>
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-emerald-400'
+    if (score >= 50) return 'text-yellow-400'
+    return 'text-gray-400'
+  }
 
-        {/* Search Section */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4 md:p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by industry, company, or job title..."
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 pl-10 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-            </div>
+  return (
+    <div className="max-w-7xl mx-auto">
+      <div className="flex items-center gap-4 mb-8">
+        <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="w-5 h-5" />
+        </Link>
+        <div>
+          <h1 className="text-2xl font-bold">Apollo Lead Search</h1>
+          <p className="text-muted-foreground text-sm">Powered by Apollo.io - 275M+ decision makers</p>
+        </div>
+        <span className="ml-auto text-xs px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+          🚀 FREE API
+        </span>
+      </div>
+
+      {/* Search Section */}
+      <div className="surface p-6 mb-8">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Location (e.g., New York)"
-              className="md:w-48 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Search by industry, company, or job title..."
+              className="input-field pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
             />
-            <button
-              onClick={searchLeads}
-              disabled={isLoading}
-              className="flex items-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black px-6 py-3 font-medium transition-colors disabled:opacity-50"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Searching...
-                </>
-              ) : (
-                'Find Leads'
-              )}
-            </button>
           </div>
+          <input
+            type="text"
+            placeholder="Location (e.g., New York)"
+            className="input-field md:w-48"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <button
+            onClick={searchLeads}
+            disabled={isLoading}
+            className="btn-primary flex items-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Searching...
+              </>
+            ) : (
+              'Find Leads'
+            )}
+          </button>
         </div>
+        <p className="text-xs text-muted-foreground mt-3">
+          💡 Searching across 275M+ decision makers • FREE (no credits used)
+        </p>
+      </div>
 
-        {error && (
-          <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
-            {error}
-          </div>
-        )}
+      {/* Message */}
+      {message && (
+        <div className="mb-6 p-4 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+          {message}
+        </div>
+      )}
 
-        {isLoading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
-          </div>
-        )}
+      {/* Error */}
+      {error && (
+        <div className="mb-6 p-4 rounded-md border border-red-500/30 bg-red-500/10 text-red-400">
+          {error}
+        </div>
+      )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {leads.map((lead: any) => (
-            <div key={lead.id} className="bg-white/5 border border-white/10 rounded-xl p-4 hover:border-emerald-500/50 transition-all">
-              <h3 className="font-semibold text-lg">{lead.fullName}</h3>
-              <p className="text-emerald-400 text-sm">{lead.company}</p>
-              <div className="mt-2 space-y-1 text-sm text-gray-400">
-                <div className="flex items-center gap-2"><Briefcase className="w-4 h-4" />{lead.title}</div>
-                <div className="flex items-center gap-2"><Building2 className="w-4 h-4" />{lead.industry}</div>
-                <div className="flex items-center gap-2"><MapPin className="w-4 h-4" />{lead.location}</div>
+      {/* Results Stats */}
+      {leads.length > 0 && (
+        <div className="mb-4 text-sm text-muted-foreground">
+          Found {leads.length} leads
+        </div>
+      )}
+
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        </div>
+      )}
+
+      {/* Leads Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {leads.map((lead) => (
+          <div key={lead.id} className="surface-hover p-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-semibold">{lead.fullName || 'Unknown'}</h3>
+                <p className="text-sm text-accent">{lead.company || 'N/A'}</p>
               </div>
+              <div className="flex items-center gap-1">
+                {lead.isVerified ? (
+                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                ) : lead.email ? (
+                  <Mail className="w-4 h-4 text-blue-400" />
+                ) : null}
+                <span className={`text-sm font-medium ${getScoreColor(lead.score)}`}>
+                  {lead.score}%
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <Briefcase className="w-4 h-4" />
+                {lead.title || 'N/A'}
+              </div>
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                {lead.industry || 'N/A'}
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                {lead.location || 'N/A'}
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
               {lead.email && (
-                <a href={mailto:} className="mt-3 inline-flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300">
-                  <Mail className="w-4 h-4" /> {lead.email}
+                <a href={`mailto:${lead.email}`} className="text-xs flex items-center gap-1 px-3 py-1 rounded-md border border-border hover:border-accent transition-colors">
+                  <Mail className="w-3 h-3" />
+                  {lead.email}
+                </a>
+              )}
+              {lead.phone && (
+                <a href={`tel:${lead.phone}`} className="text-xs flex items-center gap-1 px-3 py-1 rounded-md border border-border hover:border-accent transition-colors">
+                  <Phone className="w-3 h-3" />
+                  Call
+                </a>
+              )}
+              {lead.linkedin && (
+                <a href={lead.linkedin} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 px-3 py-1 rounded-md border border-border hover:border-accent transition-colors">
+                  <Linkedin className="w-3 h-3" />
+                  LinkedIn
                 </a>
               )}
             </div>
-          ))}
-        </div>
 
-        {!isLoading && leads.length === 0 && !error && (
-          <div className="text-center py-12">
-            <Globe className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">Search for real leads using the form above.</p>
+            <div className="mt-3 pt-3 border-t border-border flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">Source: {lead.source}</span>
+            </div>
           </div>
-        )}
+        ))}
       </div>
+
+      {/* Empty State */}
+      {!isLoading && leads.length === 0 && !error && (
+        <div className="surface p-12 text-center">
+          <Globe className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Search for Real Leads</h3>
+          <p className="text-muted-foreground">Enter a search term above to find decision makers</p>
+          <p className="text-sm text-muted-foreground mt-2">Try: "Technology", "Healthcare", or "Real Estate"</p>
+        </div>
+      )}
     </div>
   )
 }
