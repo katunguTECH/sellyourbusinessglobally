@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import axios from 'axios'
 import { findEmail, verifyEmail } from '@/lib/services/hunter'
-import { getZooqProfile, getZooqCompany } from '@/lib/services/zooq'
 
 const apolloClient = axios.create({
   baseURL: 'https://api.apollo.io/api/v1',
@@ -69,7 +68,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Step 3: Enrich with Hunter and Zooq
+    // Step 3: Enrich with Hunter
     const enrichedLeads = await Promise.all(
       people.map(async (person: any) => {
         const org = person.organization || {}
@@ -89,36 +88,10 @@ export async function GET(request: NextRequest) {
           industry: org.industry || '',
           location: [org.city, org.state, org.country].filter(Boolean).join(', '),
           linkedin: person.linkedin_url || '',
-          linkedinProfile: null as any,
-          companyData: null as any,
           score: 0,
           isVerified: false,
           hunterEmail: null as any,
-          source: 'Apollo + Hunter + Zooq'
-        }
-
-        // Enrich with Zooq (LinkedIn)
-        if (enrich && lead.linkedin) {
-          try {
-            const zooqProfile = await getZooqProfile(lead.linkedin)
-            if (zooqProfile) {
-              lead.linkedinProfile = zooqProfile
-              lead.location = zooqProfile.location || lead.location
-              // Get company data if we have the company LinkedIn URL
-              if (zooqProfile.experience && zooqProfile.experience.length > 0) {
-                const currentCompany = zooqProfile.experience.find((exp: any) => exp.current)
-                if (currentCompany && currentCompany.companyUrl) {
-                  const companyData = await getZooqCompany(currentCompany.companyUrl)
-                  if (companyData) {
-                    lead.companyData = companyData
-                    lead.industry = companyData.industry || lead.industry
-                  }
-                }
-              }
-            }
-          } catch (e) {
-            console.log('Zooq enrichment skipped for:', lead.fullName)
-          }
+          source: 'Apollo + Hunter'
         }
 
         // Enrich with Hunter (Email)
@@ -164,8 +137,7 @@ export async function GET(request: NextRequest) {
       leads: enrichedLeads,
       total: enrichedLeads.length,
       verifiedCount: enrichedLeads.filter((l: any) => l.isVerified).length,
-      enrichedCount: enrichedLeads.filter((l: any) => l.linkedinProfile).length,
-      message: `Found ${enrichedLeads.length} decision makers with full enrichment`
+      message: `Found ${enrichedLeads.length} decision makers with Hunter enrichment`
     })
 
   } catch (error: any) {
