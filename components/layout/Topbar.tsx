@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Bell, Search, ChevronDown, Sparkles, Menu, X } from 'lucide-react'
+import { Bell, Search, ChevronDown, Sparkles } from 'lucide-react'
 
 export function TopBar() {
   const [isScrolled, setIsScrolled] = useState(false)
