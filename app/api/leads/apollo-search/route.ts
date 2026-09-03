@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   if (looksLikeDomain(query)) {
     try {
       const response = await hunterClient.get('/domain-search', {
-        params: { domain: query, api_key: process.env.HUNTER_API_KEY, limit },
+        params: { domain: query, api_key: process.env.HUNTER_API_KEY, limit: Math.min(limit, 10) },
       })
 
       const emails = response.data?.data?.emails || []
