@@ -12,23 +12,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create CSV header
     const headers = [
-      'Full Name',
-      'Email',
-      'Phone',
-      'WhatsApp',
-      'Company',
-      'Title',
-      'Industry',
-      'Location',
-      'Website',
-      'LinkedIn',
-      'Score',
-      'Source'
+      'Full Name', 'Email', 'Phone', 'WhatsApp', 'Company',
+      'Title', 'Industry', 'Location', 'Website', 'LinkedIn', 'Score', 'Source'
     ]
 
-    // Create CSV rows
     const rows = leads.map((lead: any) => [
       lead.fullName || '',
       lead.email || '',
@@ -44,13 +32,11 @@ export async function POST(request: NextRequest) {
       lead.source || ''
     ])
 
-    // Build CSV string
     let csv = headers.join(',') + '\n'
     rows.forEach(row => {
       csv += row.map(cell => `"${cell}"`).join(',') + '\n'
     })
 
-    // Return CSV file
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv',

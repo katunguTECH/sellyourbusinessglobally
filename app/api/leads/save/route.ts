@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient()
+// In-memory storage for demo
+let savedLeads: any[] = []
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +9,6 @@ export async function POST(request: NextRequest) {
     
     console.log('💾 Saving lead:', body.fullName || body.email)
 
-    // Validate required fields
     if (!body.email && !body.fullName) {
       return NextResponse.json(
         { error: 'Email or Name is required' },
@@ -17,59 +16,48 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if lead already exists (by email or name+company)
-    const existingLead = await prisma.lead.findFirst({
-      where: {
-        OR: [
-          { email: body.email },
-          { 
-            AND: [
-              { fullName: body.fullName },
-              { company: body.company }
-            ]
-          }
-        ]
-      }
-    })
+    const userId = body.userId || 'demo-user-id'
+
+    const existingLead = savedLeads.find(
+      (lead) => lead.email === body.email && lead.userId === userId
+    )
 
     if (existingLead) {
       return NextResponse.json({
         success: true,
         lead: existingLead,
-        message: 'Lead already saved in database! 📁',
+        message: 'Lead already saved!',
         alreadyExists: true
       })
     }
 
-    // Save lead to database
-    const lead = await prisma.lead.create({
-      data: {
-        firstName: body.firstName || '',
-        lastName: body.lastName || '',
-        fullName: body.fullName || '',
-        email: body.email || '',
-        phone: body.phone || '',
-        whatsapp: body.whatsapp || '',
-        company: body.company || '',
-        title: body.title || '',
-        industry: body.industry || '',
-        location: body.location || '',
-        website: body.website || '',
-        linkedin: body.linkedin || '',
-        twitter: body.twitter || '',
-        score: body.score || 0,
-        source: body.source || 'manual',
-        status: 'new',
-        userId: body.userId || 'demo-user-id',
-        notes: body.notes || '',
-      }
-    })
+    const newLead = {
+      id: `lead_${Date.now()}`,
+      firstName: body.firstName || '',
+      lastName: body.lastName || '',
+      fullName: body.fullName || '',
+      email: body.email || '',
+      phone: body.phone || '',
+      whatsapp: body.whatsapp || '',
+      company: body.company || '',
+      title: body.title || '',
+      industry: body.industry || '',
+      location: body.location || '',
+      website: body.website || '',
+      linkedin: body.linkedin || '',
+      score: body.score || 0,
+      source: body.source || 'manual',
+      status: 'new',
+      userId: userId,
+      createdAt: new Date().toISOString(),
+    }
 
-    console.log('✅ Lead saved successfully:', lead.id)
+    savedLeads.push(newLead)
+    console.log('✅ Lead saved successfully:', newLead.id)
 
     return NextResponse.json({
       success: true,
-      lead: lead,
+      lead: newLead,
       message: 'Lead saved successfully! ✅'
     })
 
@@ -80,4 +68,12 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+export async function GET() {
+  return NextResponse.json({
+    success: true,
+    leads: savedLeads,
+    total: savedLeads.length
+  })
 }

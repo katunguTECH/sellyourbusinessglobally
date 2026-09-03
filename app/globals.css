@@ -4,15 +4,15 @@
 
 @layer base {
   :root {
-    --background: 220 13% 5%;      /* #0A0B0D */
-    --foreground: 220 9% 94%;      /* #EDEEF0 */
-    --card: 220 13% 8%;            /* #131519 */
+    --background: 220 13% 5%;
+    --foreground: 220 9% 94%;
+    --card: 220 13% 8%;
     --card-foreground: 220 9% 94%;
-    --border: 220 10% 14%;         /* #1C1F26 */
+    --border: 220 10% 14%;
     --input: 220 10% 14%;
     --muted: 220 10% 14%;
-    --muted-foreground: 220 6% 58%; /* #8B909A */
-    --accent: 227 100% 65%;        /* #4F7CFF */
+    --muted-foreground: 220 6% 58%;
+    --accent: 227 100% 65%;
     --accent-foreground: 0 0% 100%;
     --destructive: 4 78% 55%;
     --destructive-foreground: 0 0% 100%;
@@ -66,6 +66,24 @@
   .stat-value {
     @apply text-2xl font-semibold tabular-nums text-foreground;
   }
+
+  /* Premium Styles */
+  .glass-premium {
+    @apply bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.5)];
+  }
+  
+  .btn-primary-premium {
+    @apply relative overflow-hidden bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_8px_40px_rgba(16,185,129,0.4)] shadow-lg shadow-emerald-500/20;
+  }
+  
+  .btn-primary-premium::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-1000;
+  }
+  
+  .btn-secondary-premium {
+    @apply relative overflow-hidden border border-white/15 hover:border-white/30 bg-white/[0.04] hover:bg-white/[0.08] text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-300 hover:scale-[1.02] backdrop-blur-sm;
+  }
 }
 
 @layer utilities {
@@ -76,6 +94,33 @@
     border-radius: 8px;
   }
   ::-webkit-scrollbar-thumb:hover { background: hsl(220 10% 28%); }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .animate-pulse-slow {
+    animation: pulseSlow 4s ease-in-out infinite;
+  }
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient 8s ease infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+  
+  @keyframes pulseSlow {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(0.98); }
+  }
+  
+  @keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

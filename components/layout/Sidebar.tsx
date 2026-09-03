@@ -72,7 +72,6 @@ export function Sidebar() {
           </div>
         ))}
         
-        {/* Credits Card */}
         <div className="mt-6 p-4 rounded-md border border-border bg-background">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-md bg-accent/10 flex items-center justify-center">

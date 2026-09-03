@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -18,7 +18,7 @@ model User {
   emailVerified DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
+
   campaigns     Campaign[]
   leads         Lead[]
   searches      Search[]
@@ -28,7 +28,7 @@ model User {
   socialMentions SocialMention[]
   whatsappMessages WhatsAppMessage[]
   keywordAlerts KeywordAlert[]
-  whatsappTemplates WhatsAppTemplate[]  // ADD THIS LINE
+  whatsappTemplates WhatsAppTemplate[]
 }
 
 model Account {
@@ -77,7 +77,7 @@ model Campaign {
   clickCount    Int       @default(0)
   replyCount    Int       @default(0)
   bounceCount   Int       @default(0)
-  
+
   campaignLeads CampaignLead[]
   sequences     Sequence[]
 }
@@ -93,10 +93,10 @@ model CampaignLead {
   repliedAt     DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
+
   campaign      Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   lead          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  
+
   @@unique([campaignId, leadId])
 }
 
@@ -110,7 +110,7 @@ model Sequence {
   delayDays     Int       @default(1)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
+
   campaign      Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
 
@@ -138,7 +138,7 @@ model Lead {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
+
   campaignLeads CampaignLead[]
   socialMentions SocialMention[]
   whatsappMessages WhatsAppMessage[]
@@ -164,17 +164,13 @@ model CreditTransaction {
   createdAt   DateTime  @default(now())
 }
 
-// ============================================================
-// SOCIAL LISTENING / WARM LEADS
-// ============================================================
-
 model SocialMention {
   id            String    @id @default(cuid())
   userId        String
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   leadId        String?
   lead          Lead?     @relation(fields: [leadId], references: [id])
-  
+
   platform      String
   author        String
   authorHandle  String?
@@ -183,22 +179,18 @@ model SocialMention {
   contentUrl    String?
   postedAt      DateTime
   detectedAt    DateTime  @default(now())
-  
+
   sentiment     String?
   intent        String?
   keywords      String?
   isProcessed   Boolean   @default(false)
   isLead        Boolean   @default(false)
-  
+
   status        String    @default("new")
-  
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
-
-// ============================================================
-// WHATSAPP OUTREACH
-// ============================================================
 
 model WhatsAppMessage {
   id            String    @id @default(cuid())
@@ -206,64 +198,56 @@ model WhatsAppMessage {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   leadId        String?
   lead          Lead?     @relation(fields: [leadId], references: [id])
-  
+
   messageId     String?
   phoneNumber   String
   content       String
   direction     String
   status        String    @default("sent")
-  
+
   sentAt        DateTime  @default(now())
   deliveredAt   DateTime?
   readAt        DateTime?
   repliedAt     DateTime?
-  
+
   templateName  String?
   templateVariables String?
-  
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
-
-// ============================================================
-// KEYWORD MONITORING
-// ============================================================
 
 model KeywordAlert {
   id            String    @id @default(cuid())
   userId        String
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   keyword       String
   platforms     String
   isActive      Boolean   @default(true)
-  
+
   lastChecked   DateTime?
   matchesFound  Int       @default(0)
   lastMatch     DateTime?
-  
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
-
-// ============================================================
-// WHATSAPP TEMPLATES
-// ============================================================
 
 model WhatsAppTemplate {
   id            String    @id @default(cuid())
   userId        String
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   name          String
   language      String    @default("en")
   category      String    @default("utility")
   content       String
   variables     String?
-  
+
   isActive      Boolean   @default(true)
   usageCount    Int       @default(0)
-  
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
