@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
   Search, Building2, MapPin, Briefcase, Mail, Phone,
@@ -255,5 +255,13 @@ function LeadsSearch() {
 }
 
 export default function LeadsPage() {
-  return <LeadsSearch />
+  return (
+    <Suspense fallback={
+      <div className="max-w-6xl mx-auto flex items-center justify-center py-24">
+        <Loader2 className="w-8 h-8 animate-spin text-[hsl(var(--accent))]" />
+      </div>
+    }>
+      <LeadsSearch />
+    </Suspense>
+  )
 }
