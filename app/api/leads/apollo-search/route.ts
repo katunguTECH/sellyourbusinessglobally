@@ -5,115 +5,110 @@ const apolloClient = axios.create({
   baseURL: 'https://api.apollo.io/api/v1',
   headers: {
     'Content-Type': 'application/json',
-    'x-api-key': process.env.APOLLO_API_KEY!
-  }
+    'x-api-key': process.env.APOLLO_API_KEY!,
+  },
 })
 
+const hunterClient = axios.create({
+  baseURL: 'https://api.hunter.io/v2',
+})
+
+function looksLikeDomain(query: string): boolean {
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(query.trim()) && !query.includes(' ')
+}
+
 export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams
-    const query = searchParams.get('q') || ''
-    const location = searchParams.get('location') || ''
-    const limit = parseInt(searchParams.get('limit') || '20')
+  const searchParams = request.nextUrl.searchParams
+  const query = (searchParams.get('q') || '').trim()
+  const location = searchParams.get('location') || ''
+  const limit = parseInt(searchParams.get('limit') || '20')
 
-    // Fallback mock data if Apollo fails
-    const mockApolloLeads = [
-      {
-        id: 'apollo-1',
-        fullName: 'Alice Johnson',
-        company: 'CloudTech Solutions',
-        title: 'CEO',
-        industry: 'Technology',
-        location: 'San Francisco, USA',
-        email: 'alice@cloudtech.com',
-        phone: '+1-555-1001',
-        linkedin: 'https://linkedin.com/in/alicejohnson',
-        score: 94,
-        source: 'Apollo.io',
-        isVerified: true
-      },
-      {
-        id: 'apollo-2',
-        fullName: 'Bob Williams',
-        company: 'DataFlow Systems',
-        title: 'Founder',
-        industry: 'Software',
-        location: 'Austin, USA',
-        email: 'bob@dataflow.com',
-        phone: '+1-555-1002',
-        linkedin: 'https://linkedin.com/in/bobwilliams',
-        score: 88,
-        source: 'Apollo.io',
-        isVerified: true
-      },
-      {
-        id: 'apollo-3',
-        fullName: 'Carol Chen',
-        company: 'Innovation Labs',
-        title: 'CTO',
-        industry: 'Technology',
-        location: 'Boston, USA',
-        email: 'carol@innovation.com',
-        phone: '+1-555-1003',
-        linkedin: 'https://linkedin.com/in/carolchen',
-        score: 91,
-        source: 'Apollo.io',
-        isVerified: false
-      }
-    ]
+  if (!query) {
+    return NextResponse.json({ error: 'Search query is required', leads: [] }, { status: 400 })
+  }
 
-    // Try Apollo API first
+  // Domain-style query (e.g. "worldtvchannel.online") -> Hunter Domain Search
+  if (looksLikeDomain(query)) {
     try {
-      const response = await apolloClient.post('/mixed_companies/search', {
-        q_organization_keyword_tags: [query],
-        organization_locations: location ? [location] : undefined,
-        page: 1,
-        per_page: limit
+      const response = await hunterClient.get('/domain-search', {
+        params: { domain: query, api_key: process.env.HUNTER_API_KEY, limit },
       })
 
-      const companies = response.data.organizations || []
-      
-      if (companies.length > 0) {
-        // Format Apollo leads
-        const formattedLeads = companies.slice(0, limit).map((c: any) => ({
-          id: c.id || `apollo-${Math.random().toString(36).substring(7)}`,
-          fullName: c.name || 'Unknown',
-          company: c.name || '',
-          title: 'Decision Maker',
-          industry: c.industry || '',
-          location: [c.city, c.state, c.country].filter(Boolean).join(', '),
-          email: c.primary_domain ? `contact@${c.primary_domain}` : '',
-          phone: '',
-          linkedin: c.linkedin_url || '',
-          score: 75 + Math.floor(Math.random() * 20),
-          source: 'Apollo.io',
-          isVerified: false
-        }))
+      const emails = response.data?.data?.emails || []
 
-        return NextResponse.json({
-          leads: formattedLeads,
-          source: 'apollo',
-          total: formattedLeads.length,
-          message: `Found ${formattedLeads.length} leads from Apollo`
-        })
-      }
-    } catch (apolloError) {
-      console.log('Apollo API error, using mock data:', apolloError)
+      const leads = emails.map((e: any, i: number) => ({
+        id: `hunter-${query}-${i}`,
+        fullName: [e.first_name, e.last_name].filter(Boolean).join(' ') || 'Unknown',
+        company: response.data?.data?.organization || query,
+        title: e.position || 'N/A',
+        industry: '',
+        location: '',
+        email: e.value,
+        phone: e.phone_number || '',
+        linkedin: e.linkedin || '',
+        score: Math.round((e.confidence || 0)),
+        source: 'Hunter.io',
+        isVerified: e.verification?.status === 'valid',
+      }))
+
+      return NextResponse.json({
+        leads,
+        source: 'hunter',
+        total: leads.length,
+        message: leads.length
+          ? `Found ${leads.length} real email(s) for ${query}`
+          : `Hunter found no email addresses on file for ${query}. This domain may be too small or new for Hunter's index.`,
+      })
+    } catch (err: any) {
+      const status = err.response?.status
+      const detail = err.response?.data?.errors?.[0]?.details || err.message
+      return NextResponse.json(
+        { error: `Hunter API error (${status}): ${detail}`, leads: [] },
+        { status: status || 500 }
+      )
     }
+  }
 
-    // Return mock data if Apollo fails
-    return NextResponse.json({
-      leads: mockApolloLeads,
-      source: 'mock',
-      total: mockApolloLeads.length,
-      message: 'Using mock data (Apollo API unavailable)'
+  // Otherwise: person/title/industry query -> Apollo People Search
+  try {
+    const response = await apolloClient.post('/mixed_people/search', {
+      q_keywords: query,
+      person_locations: location ? [location] : undefined,
+      page: 1,
+      per_page: limit,
     })
 
-  } catch (error) {
-    console.error('Apollo search error:', error)
+    const people = response.data?.people || []
+
+    const leads = people.map((p: any) => ({
+      id: p.id,
+      fullName: p.name || [p.first_name, p.last_name].filter(Boolean).join(' ') || 'Unknown',
+      company: p.organization?.name || '',
+      title: p.title || 'N/A',
+      industry: p.organization?.industry || '',
+      location: [p.city, p.state, p.country].filter(Boolean).join(', '),
+      email: '', // Apollo's search endpoint doesn't return emails without a separate enrichment call
+      phone: '',
+      linkedin: p.linkedin_url || '',
+      score: 0,
+      source: 'Apollo.io',
+      isVerified: false,
+    }))
+
+    return NextResponse.json({
+      leads,
+      source: 'apollo',
+      total: leads.length,
+      message: leads.length
+        ? `Found ${leads.length} people from Apollo. Note: emails require a separate enrichment step (uses Apollo credits) — not included here yet.`
+        : `No people found for "${query}". Try a job title, industry, or company name.`,
+    })
+  } catch (err: any) {
+    const status = err.response?.status
+    const detail = err.response?.data?.error_message || err.response?.data?.message || err.message
     return NextResponse.json(
-      { error: 'Failed to search leads', leads: [] },
-      { status: 500 }
+      { error: `Apollo API error (${status}): ${detail}`, leads: [] },
+      { status: status || 500 }
     )
   }
 }
