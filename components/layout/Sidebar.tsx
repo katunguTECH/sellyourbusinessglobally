@@ -13,7 +13,7 @@ const navSections = [
     label: 'Main',
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/apollo-leads', label: 'Leads', icon: Search },
+      { href: '/leads', label: 'Leads', icon: Search },
       { href: '/saved-leads', label: 'Saved Leads', icon: Bookmark },
     ]
   },
