@@ -61,7 +61,6 @@ export async function POST(request: NextRequest) {
         source: body.source || 'manual',
         status: 'new',
         userId: body.userId || 'demo-user-id',
-        campaignId: body.campaignId || null,
         notes: body.notes || '',
       }
     })
