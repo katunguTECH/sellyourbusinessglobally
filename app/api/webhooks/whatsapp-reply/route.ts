@@ -1,21 +1,19 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { getSupabaseServerClient } from '@/lib/supabase-server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
+    const supabase = getSupabaseServerClient();
+
     const formData = await request.formData();
     const body = Object.fromEntries(formData);
-    
+
     console.log('WhatsApp webhook received:', body);
-    
+
     const { From, Body, MessageSid, ProfileName } = body;
     const phoneNumber = From.toString().replace('whatsapp:', '');
 
@@ -39,7 +37,7 @@ export async function POST(request: Request) {
           received_at: new Date().toISOString(),
           status: 'unread',
         });
-      
+
       return NextResponse.json({ status: 'ok' });
     }
 
@@ -59,7 +57,7 @@ export async function POST(request: Request) {
         status: 'unread',
       });
 
-    await updateLeadStatus(lead.id, analysis);
+    await updateLeadStatus(supabase, lead.id, analysis);
 
     console.log('WhatsApp reply stored for lead:', lead.id);
     return NextResponse.json({ status: 'ok' });
@@ -72,14 +70,14 @@ export async function POST(request: Request) {
 
 function analyzeWhatsAppReply(message: string) {
   const lowerMessage = message.toLowerCase();
-  
+
   const interested = ['interested', 'yes', 'sure', 'would like', 'tell me more', 'available', 'call', 'meeting', 'discuss', 'great'];
   const notInterested = ['not interested', 'no thanks', 'pass', 'not for us', 'no thank you'];
   const questions = ['how', 'what', 'when', 'where', 'why', 'who', '?'];
-  
+
   let category = 'neutral';
   let sentiment = 'neutral';
-  
+
   if (interested.some(word => lowerMessage.includes(word))) {
     category = 'interested';
     sentiment = 'positive';
@@ -90,7 +88,7 @@ function analyzeWhatsAppReply(message: string) {
     category = 'question';
     sentiment = 'neutral';
   }
-  
+
   return {
     category,
     sentiment,
@@ -98,7 +96,7 @@ function analyzeWhatsAppReply(message: string) {
   };
 }
 
-async function updateLeadStatus(leadId: string, analysis: any) {
+async function updateLeadStatus(supabase: SupabaseClient, leadId: string, analysis: any) {
   let status = 'active';
   switch (analysis.category) {
     case 'interested': status = 'warm'; break;
@@ -106,12 +104,12 @@ async function updateLeadStatus(leadId: string, analysis: any) {
     case 'question': status = 'active'; break;
     default: status = 'active';
   }
-  
+
   await supabase
     .from('leads')
-    .update({ 
-      status, 
-      last_contact: new Date().toISOString() 
+    .update({
+      status,
+      last_contact: new Date().toISOString()
     })
     .eq('id', leadId);
 }

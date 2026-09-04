@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { getSupabaseServerClient } from '@/lib/supabase-server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Use the new route segment config
 export const dynamic = 'force-dynamic';
@@ -12,9 +8,11 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
+    const supabase = getSupabaseServerClient();
+
     const body = await request.json();
     console.log('Email webhook received:', body);
-    
+
     const { from, to, subject, text, html, headers } = body;
 
     const leadIdMatch = subject?.match(/\[LEAD-([a-zA-Z0-9-]+)\]/);
@@ -56,7 +54,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Database error' }, { status: 500 });
     }
 
-    await updateLeadStatus(leadId, analysis);
+    await updateLeadStatus(supabase, leadId, analysis);
 
     console.log('Email reply stored for lead:', leadId);
     return NextResponse.json({ received: true, leadId, analysis });
@@ -69,14 +67,14 @@ export async function POST(request: Request) {
 
 function analyzeReply(text: string) {
   const lowerText = text.toLowerCase();
-  
+
   const interested = ['interested', 'yes', 'sure', 'would like', 'tell me more', 'available', 'call', 'meeting', 'discuss'];
   const notInterested = ['not interested', 'no thanks', 'pass', 'not for us', 'no thank you'];
   const questions = ['how', 'what', 'when', 'where', 'why', 'who', '?'];
-  
+
   let category = 'neutral';
   let sentiment = 'neutral';
-  
+
   if (interested.some(word => lowerText.includes(word))) {
     category = 'interested';
     sentiment = 'positive';
@@ -87,7 +85,7 @@ function analyzeReply(text: string) {
     category = 'question';
     sentiment = 'neutral';
   }
-  
+
   return {
     category,
     sentiment,
@@ -95,27 +93,27 @@ function analyzeReply(text: string) {
   };
 }
 
-async function updateLeadStatus(leadId: string, analysis: any) {
+async function updateLeadStatus(supabase: SupabaseClient, leadId: string, analysis: any) {
   let status = 'active';
   switch (analysis.category) {
-    case 'interested': 
-      status = 'warm'; 
+    case 'interested':
+      status = 'warm';
       break;
-    case 'not_interested': 
-      status = 'cold'; 
+    case 'not_interested':
+      status = 'cold';
       break;
-    case 'question': 
-      status = 'active'; 
+    case 'question':
+      status = 'active';
       break;
-    default: 
+    default:
       status = 'active';
   }
-  
+
   await supabase
     .from('leads')
-    .update({ 
-      status, 
-      last_contact: new Date().toISOString() 
+    .update({
+      status,
+      last_contact: new Date().toISOString()
     })
     .eq('id', leadId);
 }
