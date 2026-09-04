@@ -55,25 +55,35 @@ export async function POST(request: Request) {
 
     const result = JSON.parse(completion.choices[0].message.content || '{}');
 
-    // Auto-run Apollo searches for each persona
+    // Auto-run real lead searches for each persona (hits Hunter for domains,
+    // Apollo for person/industry queries — Apollo currently returns a
+    // friendly "unavailable" message until the plan is upgraded)
     const leads = await Promise.all(
-      result.buyerPersonas.map(async (persona: any) => {
-        const searchResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL}/api/leads/search`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              query: persona.apolloQuery || `${persona.title} ${persona.industry}`,
-              persona: persona,
-            }),
-          }
-        );
-        const searchData = await searchResponse.json();
-        return {
-          persona,
-          leads: searchData.leads || [],
-        };
+      (result.buyerPersonas || []).map(async (persona: any) => {
+        const query = persona.apolloQuery || `${persona.title} ${persona.industry}`;
+        const params = new URLSearchParams({ q: query, limit: '10' });
+
+        try {
+          const searchResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_APP_URL}/api/leads/apollo-search?${params.toString()}`,
+            { method: 'GET' }
+          );
+          const searchData = await searchResponse.json();
+          return {
+            persona,
+            leads: searchData.leads || [],
+            source: searchData.source || 'unknown',
+            message: searchData.message || null,
+          };
+        } catch (searchError) {
+          console.error(`Lead search failed for persona "${query}":`, searchError);
+          return {
+            persona,
+            leads: [],
+            source: 'error',
+            message: 'Lead search failed for this persona.',
+          };
+        }
       })
     );
 

@@ -70,45 +70,12 @@ export async function GET(request: NextRequest) {
   }
 
   // Otherwise: person/title/industry query -> Apollo People Search
-  try {
-    const response = await apolloClient.post('/mixed_people/search', {
-      q_keywords: query,
-      person_locations: location ? [location] : undefined,
-      page: 1,
-      per_page: limit,
-    })
-
-    const people = response.data?.people || []
-
-    const leads = people.map((p: any) => ({
-      id: p.id,
-      fullName: p.name || [p.first_name, p.last_name].filter(Boolean).join(' ') || 'Unknown',
-      company: p.organization?.name || '',
-      title: p.title || 'N/A',
-      industry: p.organization?.industry || '',
-      location: [p.city, p.state, p.country].filter(Boolean).join(', '),
-      email: '', // Apollo's search endpoint doesn't return emails without a separate enrichment call
-      phone: '',
-      linkedin: p.linkedin_url || '',
-      score: 0,
-      source: 'Apollo.io',
-      isVerified: false,
-    }))
-
-    return NextResponse.json({
-      leads,
-      source: 'apollo',
-      total: leads.length,
-      message: leads.length
-        ? `Found ${leads.length} people from Apollo. Note: emails require a separate enrichment step (uses Apollo credits) — not included here yet.`
-        : `No people found for "${query}". Try a job title, industry, or company name.`,
-    })
-  } catch (err: any) {
-    const status = err.response?.status
-    const detail = err.response?.data?.error_message || err.response?.data?.message || err.message
-    return NextResponse.json(
-      { error: `Apollo API error (${status}): ${detail}`, leads: [] },
-      { status: status || 500 }
-    )
-  }
+  // Currently unavailable: this endpoint requires a paid Apollo plan.
+  // Returning a clean fallback instead of hitting the API and surfacing a raw 403.
+  return NextResponse.json({
+    leads: [],
+    source: 'unavailable',
+    total: 0,
+    message: `Search by job title or industry isn't available yet — that requires a paid Apollo plan we haven't activated. Try a company domain instead (e.g. "stripe.com") to find real emails via Hunter.`,
+  })
 }
