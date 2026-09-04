@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     `;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: 'You are a consumer growth marketing strategist. Return only valid JSON.' },
         { role: 'user', content: prompt }
