@@ -6,6 +6,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request: Request) {
   try {
     const { replyId, message, channel } = await request.json();
@@ -17,7 +20,6 @@ export async function POST(request: Request) {
       );
     }
     
-    // Get the reply
     const table = channel === 'email' ? 'email_replies' : 'whatsapp_replies';
     const { data: reply, error } = await supabase
       .from(table)
@@ -32,7 +34,6 @@ export async function POST(request: Request) {
       );
     }
     
-    // Mark as replied
     const { error: updateError } = await supabase
       .from(table)
       .update({
@@ -44,8 +45,6 @@ export async function POST(request: Request) {
     
     if (updateError) throw updateError;
     
-    // Here you would actually send the reply via Resend or Twilio
-    // For now, just log it
     console.log(`Reply sent to ${reply.lead.name} (${reply.lead.email}):`, message);
     
     return NextResponse.json({ 

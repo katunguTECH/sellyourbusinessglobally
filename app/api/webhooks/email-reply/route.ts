@@ -6,15 +6,17 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Use the new route segment config
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     console.log('Email webhook received:', body);
     
-    // Resend webhook format
     const { from, to, subject, text, html, headers } = body;
 
-    // Extract lead ID from subject [LEAD-xxx]
     const leadIdMatch = subject?.match(/\[LEAD-([a-zA-Z0-9-]+)\]/);
     if (!leadIdMatch) {
       console.log('No lead ID found in subject');
@@ -22,7 +24,6 @@ export async function POST(request: Request) {
     }
     const leadId = leadIdMatch[1];
 
-    // Verify lead exists
     const { data: lead, error: leadError } = await supabase
       .from('leads')
       .select('id, name, company, status')
@@ -34,10 +35,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true });
     }
 
-    // Analyze the reply (simple version - we'll upgrade to AI later)
     const analysis = analyzeReply(text || html || '');
 
-    // Store the reply
     const { error } = await supabase
       .from('email_replies')
       .insert({
@@ -57,7 +56,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Database error' }, { status: 500 });
     }
 
-    // Update lead status
     await updateLeadStatus(leadId, analysis);
 
     console.log('Email reply stored for lead:', leadId);
@@ -69,11 +67,9 @@ export async function POST(request: Request) {
   }
 }
 
-// Simple reply analysis (without OpenAI for now)
 function analyzeReply(text: string) {
   const lowerText = text.toLowerCase();
   
-  // Check for interest signals
   const interested = ['interested', 'yes', 'sure', 'would like', 'tell me more', 'available', 'call', 'meeting', 'discuss'];
   const notInterested = ['not interested', 'no thanks', 'pass', 'not for us', 'no thank you'];
   const questions = ['how', 'what', 'when', 'where', 'why', 'who', '?'];
@@ -123,12 +119,3 @@ async function updateLeadStatus(leadId: string, analysis: any) {
     })
     .eq('id', leadId);
 }
-
-export const config = {
-  api: {
-    bodyParser: true,
-    externalResolver: true,
-  },
-};
-
-export const dynamic = 'force-dynamic';

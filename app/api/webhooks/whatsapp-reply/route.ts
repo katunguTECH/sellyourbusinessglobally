@@ -6,45 +6,52 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    console.log('Email webhook received:', body);
+    const formData = await request.formData();
+    const body = Object.fromEntries(formData);
     
-    // Resend webhook format
-    const { from, to, subject, text, html, headers } = body;
+    console.log('WhatsApp webhook received:', body);
+    
+    const { From, Body, MessageSid, ProfileName } = body;
+    const phoneNumber = From.toString().replace('whatsapp:', '');
 
-    // Extract lead ID from subject [LEAD-xxx]
-    const leadIdMatch = subject?.match(/\[LEAD-([a-zA-Z0-9-]+)\]/);
-    if (!leadIdMatch) {
-      console.log('No lead ID found in subject');
-      return NextResponse.json({ received: true });
-    }
-    const leadId = leadIdMatch[1];
-
-    // Verify lead exists
-    const { data: lead, error: leadError } = await supabase
+    const { data: lead, error } = await supabase
       .from('leads')
       .select('id, name, company, status')
-      .eq('id', leadId)
+      .eq('whatsapp', phoneNumber)
       .single();
 
-    if (leadError || !lead) {
-      console.log('Lead not found:', leadId);
-      return NextResponse.json({ received: true });
+    if (!lead) {
+      console.log('No lead found for number:', phoneNumber);
+      await supabase
+        .from('whatsapp_replies')
+        .insert({
+          from_number: phoneNumber,
+          message: Body.toString(),
+          message_sid: MessageSid,
+          sentiment: 'neutral',
+          category: 'neutral',
+          needs_response: true,
+          received_at: new Date().toISOString(),
+          status: 'unread',
+        });
+      
+      return NextResponse.json({ status: 'ok' });
     }
 
-    // Analyze the reply (simple version - we'll upgrade to AI later)
-    const analysis = analyzeReply(text || html || '');
+    const analysis = analyzeWhatsAppReply(Body.toString());
 
-    // Store the reply
-    const { error } = await supabase
-      .from('email_replies')
+    await supabase
+      .from('whatsapp_replies')
       .insert({
-        lead_id: leadId,
-        from_email: from,
-        subject: subject || 'No subject',
-        body: text || html || '',
+        lead_id: lead.id,
+        from_number: phoneNumber,
+        message: Body.toString(),
+        message_sid: MessageSid,
         sentiment: analysis.sentiment || 'neutral',
         category: analysis.category || 'neutral',
         needs_response: analysis.needsResponse || false,
@@ -52,42 +59,34 @@ export async function POST(request: Request) {
         status: 'unread',
       });
 
-    if (error) {
-      console.error('Database error:', error);
-      return NextResponse.json({ error: 'Database error' }, { status: 500 });
-    }
+    await updateLeadStatus(lead.id, analysis);
 
-    // Update lead status
-    await updateLeadStatus(leadId, analysis);
-
-    console.log('Email reply stored for lead:', leadId);
-    return NextResponse.json({ received: true, leadId, analysis });
+    console.log('WhatsApp reply stored for lead:', lead.id);
+    return NextResponse.json({ status: 'ok' });
 
   } catch (error) {
-    console.error('Email webhook error:', error);
-    return NextResponse.json({ error: 'Webhook error' }, { status: 500 });
+    console.error('WhatsApp webhook error:', error);
+    return NextResponse.json({ status: 'error' }, { status: 500 });
   }
 }
 
-// Simple reply analysis (without OpenAI for now)
-function analyzeReply(text: string) {
-  const lowerText = text.toLowerCase();
+function analyzeWhatsAppReply(message: string) {
+  const lowerMessage = message.toLowerCase();
   
-  // Check for interest signals
-  const interested = ['interested', 'yes', 'sure', 'would like', 'tell me more', 'available', 'call', 'meeting', 'discuss'];
+  const interested = ['interested', 'yes', 'sure', 'would like', 'tell me more', 'available', 'call', 'meeting', 'discuss', 'great'];
   const notInterested = ['not interested', 'no thanks', 'pass', 'not for us', 'no thank you'];
   const questions = ['how', 'what', 'when', 'where', 'why', 'who', '?'];
   
   let category = 'neutral';
   let sentiment = 'neutral';
   
-  if (interested.some(word => lowerText.includes(word))) {
+  if (interested.some(word => lowerMessage.includes(word))) {
     category = 'interested';
     sentiment = 'positive';
-  } else if (notInterested.some(word => lowerText.includes(word))) {
+  } else if (notInterested.some(word => lowerMessage.includes(word))) {
     category = 'not_interested';
     sentiment = 'negative';
-  } else if (questions.some(word => lowerText.includes(word))) {
+  } else if (questions.some(word => lowerMessage.includes(word))) {
     category = 'question';
     sentiment = 'neutral';
   }
@@ -102,17 +101,10 @@ function analyzeReply(text: string) {
 async function updateLeadStatus(leadId: string, analysis: any) {
   let status = 'active';
   switch (analysis.category) {
-    case 'interested': 
-      status = 'warm'; 
-      break;
-    case 'not_interested': 
-      status = 'cold'; 
-      break;
-    case 'question': 
-      status = 'active'; 
-      break;
-    default: 
-      status = 'active';
+    case 'interested': status = 'warm'; break;
+    case 'not_interested': status = 'cold'; break;
+    case 'question': status = 'active'; break;
+    default: status = 'active';
   }
   
   await supabase
@@ -123,12 +115,3 @@ async function updateLeadStatus(leadId: string, analysis: any) {
     })
     .eq('id', leadId);
 }
-
-export const config = {
-  api: {
-    bodyParser: true,
-    externalResolver: true,
-  },
-};
-
-export const dynamic = 'force-dynamic';
