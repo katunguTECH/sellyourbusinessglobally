@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Sparkles, Loader2, Mail, ExternalLink } from 'lucide-react'
 
@@ -24,7 +24,7 @@ const MODE_CONFIG: Record<Mode, { title: string; desc: string; placeholder: stri
   },
 }
 
-export default function ICPGeneratorPage() {
+function ICPGeneratorContent() {
   const searchParams = useSearchParams()
   const mode = (searchParams.get('mode') as Mode) || 'buyers'
   const config = MODE_CONFIG[mode]
@@ -192,5 +192,13 @@ export default function ICPGeneratorPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function ICPGeneratorPage() {
+  return (
+    <Suspense fallback={<div className="max-w-4xl mx-auto p-4 text-sm text-muted-foreground">Loading...</div>}>
+      <ICPGeneratorContent />
+    </Suspense>
   )
 }
