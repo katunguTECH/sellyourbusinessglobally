@@ -2,12 +2,12 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 export async function POST(request: Request) {
   try {
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
     const { url, businessDescription } = await request.json();
 
     if (!url && !businessDescription) {
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     });
 
     const result = JSON.parse(completion.choices[0].message.content || '{}');
-    
+
     // Auto-run Apollo searches for each persona
     const leads = await Promise.all(
       result.buyerPersonas.map(async (persona: any) => {
