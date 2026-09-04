@@ -4,22 +4,22 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import twilio from 'twilio';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
-
-// Your approved WhatsApp template SID from the deployment
-const WHATSAPP_TEMPLATE_SID = process.env.WHATSAPP_TEMPLATE_SID;
-
 export async function POST(request: Request) {
   try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const twilioClient = twilio(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN
+    );
+
+    // Your approved WhatsApp template SID from the deployment
+    const WHATSAPP_TEMPLATE_SID = process.env.WHATSAPP_TEMPLATE_SID;
+
     const { campaignId, limit = 5 } = await request.json();
 
     // Get pending queue items
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
         if (currentStep.type === 'email') {
           // Get personalized email template
           const emailContent = await generateEmail(lead, currentStep.template);
-          
+
           await resend.emails.send({
             from: 'Acquisition Team <acquisitions@yourdomain.com>',
             to: lead.email,
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
 
       } catch (sendError) {
         console.error(`Failed to send to ${lead.email}:`, sendError);
-        
+
         await supabase.from('outreach_logs').insert({
           lead_id: lead.id,
           campaign_id: campaignId,
