@@ -171,6 +171,11 @@ model SocialMention {
   leadId        String?
   lead          Lead?     @relation(fields: [leadId], references: [id])
 
+  // Which tracked keyword surfaced this mention (added for social listening scan job).
+  // Optional because existing/manual mentions may not have come from a keyword scan.
+  keywordAlertId String?
+  keywordAlert   KeywordAlert? @relation(fields: [keywordAlertId], references: [id], onDelete: Cascade)
+
   platform      String
   author        String
   authorHandle  String?
@@ -188,8 +193,22 @@ model SocialMention {
 
   status        String    @default("new")
 
+  // --- Added for AI-scored Reddit listening ---
+  externalId       String?  // source post id (e.g. Reddit post id), used to dedupe across scans
+  title            String?  // Reddit posts have a title distinct from body (stored in `content`)
+  isRelevant       Boolean  @default(false) // AI relevance verdict, independent of isLead (CRM conversion)
+  relevanceScore   Int      @default(0)     // 0-100, AI-scored
+  summary          String?  @db.Text        // one-line AI summary of the post
+  suggestedReply   String?  @db.Text        // AI-drafted reply, null if none suggested
+  upvotes          Int      @default(0)     // source-native engagement score (e.g. Reddit score)
+  numComments      Int      @default(0)
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  @@unique([externalId, platform])
+  @@index([keywordAlertId])
+  @@index([isRelevant, relevanceScore])
 }
 
 model WhatsAppMessage {
@@ -229,6 +248,12 @@ model KeywordAlert {
   lastChecked   DateTime?
   matchesFound  Int       @default(0)
   lastMatch     DateTime?
+
+  // --- Added for AI-scored Reddit listening ---
+  subreddits      String[] @default([]) // empty = search all of Reddit
+  businessContext String?  @db.Text     // optional context passed to the AI scorer for this keyword
+
+  mentions      SocialMention[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
