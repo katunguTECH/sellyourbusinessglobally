@@ -41,3 +41,7 @@ desktop.ini
 .vercel
 
 .env.development.local
+
+.env
+
+sitemap.xml

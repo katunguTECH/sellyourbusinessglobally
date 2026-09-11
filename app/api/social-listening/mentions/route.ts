@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { DEV_USER_ID } from '@/lib/dev-user'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const userId = DEV_USER_ID
+  const session = await getServerSession(authOptions)
+  const userId = session?.user?.id
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const url = new URL(req.url)
   const keywordId = url.searchParams.get('keywordId') ?? undefined

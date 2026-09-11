@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { DEV_USER_ID } from '@/lib/dev-user'
 import { searchReddit } from '@/lib/reddit'
 import { scorePosts, type Scored } from '@/lib/social-listening-ai'
 import { heuristicRelevance } from '@/lib/relevance'
@@ -38,14 +39,18 @@ async function safeScorePosts(
 }
 
 export async function POST() {
-  const userId = DEV_USER_ID
+  const session = await getServerSession(authOptions)
+  const userId = session?.user?.id
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const keywords = await prisma.keywordAlert.findMany({
     where: { userId, isActive: true },
   })
 
   if (keywords.length === 0) {
-    return NextResponse.json({ keywords: 0, created: 0, errors: [] })
+    return NextResponse.json({ keywords: 0, created: 0, errors: [], summary: [] })
   }
 
   let created = 0
@@ -70,7 +75,6 @@ export async function POST() {
         continue
       }
 
-      // 1. Filter to unseen posts
       const externalIds = posts.map((p) => p.id)
       const existing = await prisma.socialMention.findMany({
         where: { platform: 'reddit', externalId: { in: externalIds } },
@@ -79,7 +83,6 @@ export async function POST() {
       const seen = new Set(existing.map((e) => e.externalId))
       const unseen = posts.filter((p) => !seen.has(p.id))
 
-      // 2. Heuristic pre-filter — kills noise before we spend AI/DB budget
       const scoredHeuristics = unseen.map((p) => ({
         post: p,
         heuristic: heuristicRelevance(kw.keyword, p.title, p.selftext),
@@ -102,7 +105,6 @@ export async function POST() {
         continue
       }
 
-      // 3. AI score the survivors
       const aiScores = await safeScorePosts(
         kw.keyword,
         kept.map(({ post }) => ({
@@ -116,10 +118,6 @@ export async function POST() {
 
       for (const { post: p, heuristic } of kept) {
         const s = aiScores[p.id] ?? neutralFallback()
-
-        // If AI actually ran, average AI relevance with the heuristic.
-        // If AI fell back (no credits / outage), trust the heuristic alone —
-        // otherwise the 0.5 fallback drags every score toward the middle.
         const aiIsFallback = s.reason === FALLBACK_REASON
         const combined = aiIsFallback
           ? heuristic
